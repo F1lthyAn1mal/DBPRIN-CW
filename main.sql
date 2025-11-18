@@ -112,3 +112,15 @@ CREATE TABLE staff_assinments (
     FOREIGN KEY (staff_id) REFERENCES staff(staff_id),
 
 )
+
+
+CREATE TYPE pay_type_enum AS ENUM ('In Full', 'Installment', )
+
+CREATE TABLE payments (
+    pay_id SERIAL PRIMARY KEY,
+    invoice_id INT NOT NULL,
+    pay_amount DECIMAL(6,2) NOT NULL,
+    pay_method VARCHAR(50) NOT NULL,
+    pay_date DATE NOT NULL,
+    pay_type 
+)
