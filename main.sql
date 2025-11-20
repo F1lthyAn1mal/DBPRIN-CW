@@ -69,31 +69,35 @@ CREATE TABLE branch_staff (
     branch_id INT NOT NULL,
     staff_id INT NOT NULL,
     FOREIGN KEY (branch_id) REFERENCES branches(branch_id)
-    FOREIGN 
-EY )
+    FOREIGN KEY (staff_id) REFERENCES staff(staff_id)
+);
 
 
 CREATE TABLE packages(
     package_id SERIAL PRIMARY KEY,
-    package_price DECIMAL(10,2),
-    package_ideas TEXT
-    
+    package_price DECIMAL(10,2) NOT NULL CHECK (package_price >= 0),
+    package_desc TEXT
 );
 
-
+CREATE TABLE service_packages (
+    service_id INT NOT NULL,
+    package_id INT NOT NULL,
+    FOREIGN KEY (service_id) REFERENCES service_type(service_id),
+    FOREIGN KEY (package_id) REFERENCES packages(package_id)
+);
 
 Create Table service_type(
     service_id SERIAL PRIMARY KEY,
-    service_name VARCHAR(20),
-    service_price  DECIMAL(10,2)
-    
+    service_name VARCHAR(20) NOT NULL,
+    service_price DECIMAL(10,2) NOT NULL CHECK (service_price >= 0)
 );
 
 
 CREATE TABLE service_assignments(
-    service_asgn_id  SERIAL PRIMARY KEY,
-    allocation_id INTEGER,
-    service_id INTEGER
+    service_asgn_id SERIAL PRIMARY KEY,
+    allocation_id INT NOT NULL,
+    service_id INT NOT NULL,
+    time_taken DECIMAL(3,1)
 );
 
 
@@ -102,6 +106,8 @@ CREATE TABLE staff_assinments (
     service_asgnn_id INT NOT NULL,
     FOREIGN KEY (staff_id) REFERENCES staff(staff_id)
 );
+
+
 
 
 CREATE TYPE pay_type_enum AS ENUM ('In Full', 'Installment', )
