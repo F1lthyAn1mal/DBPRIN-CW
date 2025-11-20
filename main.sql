@@ -14,7 +14,7 @@ CREATE TABLE staff (
 CREATE TABLE certifications (
     cert_id SERIAL PRIMARY KEY,
     cert_name VARCHAR(100) NOT NULL,
-    cert_date DATE NOT NULL
+    cert_date DATE NOT NULL DEFAULT CURRENT_DATE
 );
 CREATE TABLE staff_certifications (
     staff_id INT NOT NULL,
@@ -40,7 +40,7 @@ CREATE TABLE staff_roles (
 -- STAFF SHIFTS AND INTERSECT TABLE
 CREATE TABLE shifts (
     shift_id SERIAL PRIMARY KEY,
-    shift_start TIMESTAMP NOT NULL,
+    shift_start TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     shift_end TIMESTAMP NOT NULL,
     CHECK (shift_end > shift_start)
 );
@@ -48,7 +48,7 @@ CREATE TABLE staff_shifts (
     staff_id INT NOT NULL,
     shift_id INT NOT NULL,
     FOREIGN KEY (staff_id) REFERENCES staff(staff_id),
-    FOREIGN KEY (shift_id) REFERENCES shift(
+    FOREIGN KEY (shift_id) REFERENCES shift(shift_id)
 );
 
 
@@ -82,15 +82,6 @@ CREATE TABLE packages(
 
 
 
-CREATE TABLE service_packages(
-    staff_id  INT,
-    package_id INT
-
-    FOREIGN KEY(package_id
-
-    
-);
-
 Create Table service_type(
     service_id SERIAL PRIMARY KEY,
     service_name VARCHAR(20),
@@ -109,9 +100,8 @@ CREATE TABLE service_assignments(
 CREATE TABLE staff_assinments (
     staff_id INT NOT NULL,
     service_asgnn_id INT NOT NULL,
-    FOREIGN KEY (staff_id) REFERENCES staff(staff_id),
-
-)
+    FOREIGN KEY (staff_id) REFERENCES staff(staff_id)
+);
 
 
 CREATE TYPE pay_type_enum AS ENUM ('In Full', 'Installment', )
@@ -121,6 +111,46 @@ CREATE TABLE payments (
     invoice_id INT NOT NULL,
     pay_amount DECIMAL(6,2) NOT NULL,
     pay_method VARCHAR(50) NOT NULL,
-    pay_date DATE NOT NULL,
-    pay_type 
-)
+    pay_date DATE NOT NULL DEFAULT CURRENT_DATE,
+    pay_type pay_type_enum
+);
+
+CREATE TABLE payment_plans (
+    plan_id SERIAL PRIMARY KEY,
+    plan_name VARCHAR(50)
+);
+
+CREATE TABLE invoices (
+    invoice_id SERIAL PRIMARY KEY,
+    appt_id INT NOT NULL,
+    plan_id INT NOT NULL,
+    cust_id INT NOT NULL,
+    invoice_total DECIMAL(7,2),
+    invoice_date DATE NOT NULL DEFAULT CURRENT_DATE,
+    invoice_due DECIMAL(7,2),
+    invoice_discount_total DECIMAL(7,2),
+    FOREIGN KEY (appt_id) REFERENCES appointments(appt_id),
+    FOREIGN KEY (plan_id) REFERENCES payment_plans(plan_id),
+    FOREIGN KEY (cust_id) REFERENCES customer(cust_id)
+);
+
+CREATE TABLE appointments (
+    appt_id SERIAL PRIMARY KEY,
+    vehicle_id INT NOT NULL,
+    appt_date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP CHECK (appt_date >= CURRENT_TIMESTAMP)
+);
+
+CREATE TABLE feedback (
+    feedback_id SERIAL PRIMARY KEY,
+    appt_id INT NOT NULL,
+    rating INT CHECK (rating BETWEEN 1 and 5)
+    description TEXT,
+    feedback_date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP CHECK (feedback_date >= CURRENT_TIMESTAMP)
+);
+
+CREATE TABLE feedback_replies (
+    reply_id SERIAL PRIMARY KEY,
+    feedback_id INT NOT NULL,
+    reply_text TEXT,
+    reply_date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP CHECK (reply_date >= CURRENT_TIMESTAMP)
+);
