@@ -190,7 +190,7 @@ CREATE TABLE service_packages (
 );
 
 
-CREATE TABLE workshop_allocation(
+CREATE TABLE bay_allocation(
     allocation_id SERIAL PRIMARY KEY,
     appt_id INT NOT NULL,
     FOREIGN KEY (appt_id) REFERENCES appointments(appt_id)
@@ -201,9 +201,8 @@ CREATE TABLE service_assignments(
     allocation_id INTEGER NOT NULL,
     service_id INTEGER NOT NULL,
     time_taken DECIMAL(3,1),
-
     FOREIGN KEY(service_id) REFERENCES service_type(service_id),
-    FOREIGN KEY(allocation_id) REFERENCES workshop_allocation(allocation_id)
+    FOREIGN KEY(allocation_id) REFERENCES bay_allocation(allocation_id)
 );
 
 
@@ -228,7 +227,7 @@ CREATE TABLE parts_usage(
     part_id INT NOT NULL,
     allocation_id INT NOT NULL,
     FOREIGN KEY(part_id) REFERENCES parts(part_id),
-    FOREIGN KEY(allocation_id) REFERENCES workshop_allocation(allocation_id)
+    FOREIGN KEY(allocation_id) REFERENCES bay_allocation(allocation_id)
 );
  
 CREATE TABLE payment_plans (
