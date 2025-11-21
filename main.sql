@@ -94,16 +94,70 @@ Create Table service_type(
 
 
 CREATE TABLE service_assignments(
-    service_asgn_id SERIAL PRIMARY KEY,
-    allocation_id INT NOT NULL,
-    service_id INT NOT NULL,
+    service_asgn_id  SERIAL PRIMARY KEY,
+    allocation_id INTEGER NOT NULL,
+    service_id INTEGER NOT NULL,
     time_taken DECIMAL(3,1)
+
+    FOREIGN KEY(service_id) REFERENCES service_type(service_id),
+    FOREIGN KEY(allocation_id) REFERENCES workshop_allocation(allocation_id)
 );
+
+Create Table workshop_allocation(
+    allocation_id SERIAL PRIMARY KEY,
+    app_id INT NOT NULL,
+)
 
 
 CREATE TABLE staff_assignments (
     staff_id INT NOT NULL,
     service_asgnn_id INT NOT NULL,
+    bay_id INT NOT NULL,
+    FOREIGN KEY (staff_id) REFERENCES staff(staff_id),
+    FOREIGN KEY (bay_id) REFERENCES service_bays(bay_id)
+);
+
+Create Table service_bays(
+    bay_id SERIAL PRIMARY KEY,
+    branch_id INT NOT NULL,
+    occupied BOOL,
+    FOREIGN KEY(branch_id) REFERENCES branches(branch_id)
+);
+
+Create Table bay_compliance(
+    bay_record_id SERIAL PRIMARY KEY,
+    bay_id INT NOT NULL,
+    bay_inspection_date TIMESTAMP,
+    bay_inspection_passed BOOL,
+    FOREIGN KEY(bay_id) REFERENCES service_bays(bay_id)
+);
+
+Create Table parts_usage(
+    part_id INT NOT NULL,
+    allocation_id INT NOT NULL,
+    FOREIGN KEY(part_id) REFERENCES parts(part_id),
+    FOREIGN KEY(allocation_id) REFERENCES workshop_allocation(allocation_id)
+);
+ 
+ Create TABLE parts(
+    part_id Serial Primary Key,
+    part_name VARCHAR(50),
+    part_description VARCHAR(50),
+    part_price DECIMAL(7,2),
+
+ );
+
+
+ Create Table branch_compliance(
+    record_id  Serial Primary KEY,
+    branch_id INT NOT NULL,
+    branch_inspection_date TIMESTAMP,
+    branch_inspection BOOL,
+    FOREIGN KEY(branch_id) REFERENCES branches(branch_id)
+ );
+
+
+
     FOREIGN KEY (staff_id) REFERENCES staff(staff_id)
 );
 
