@@ -97,11 +97,9 @@ Create Table bay_compliance(
 
 
 CREATE TYPE member_enum AS ENUM ('None', 'Bronze', 'Silver', 'Gold');
-CREATE TYPE member_duration_enum AS ENUM('None', 'Month', 'Year', '3 Year');
 CREATE TABLE memberships (
     member_id SERIAL PRIMARY KEY,
     member_tier member_enum NOT NULL,
-    member_duration member_duration_enum NOT NULL,
     member_price DECIMAL(5,2) NOT NULL,
     member_discount DECIMAL(4,2) NOT NULL
 );
@@ -109,6 +107,7 @@ CREATE TABLE memberships (
 CREATE TABLE customers (
     cust_id SERIAL PRIMARY KEY,
     member_id INT NOT NULL,
+    member_join_date DATE DEFAULT CURRENT_DATE,
     cust_fname VARCHAR(50) NOT NULL,
     cust_lname VARCHAR(50) NOT NULL,
     cust_phone VARCHAR(15) NOT NULL UNIQUE CHECK (cust_phone ~ '^[0-9]+$'),
@@ -135,6 +134,16 @@ CREATE TABLE vehicles (
     vehicle_transmission transmission_enum NOT NULL,
     vehicle_mileage INT NOT NULL,
     FOREIGN KEY (cust_id) REFERENCES customers(cust_id)
+);
+
+CREATE TABLE vehicle_mot (
+    mot_id SERIAL PRIMARY KEY,
+    vehicle_id INT NOT NULL,
+    mot_date DATE NOT NULL,
+    mot_due_date DATE DEFAULT CURRENT_DATE + INVERVAL '1 Year',
+    passed BOOL,
+    advisories TEXT,
+    FOREIGN KEY (vehicle_id) REFERENCES vehicles(vehicle_id)
 );
 
 CREATE TABLE vehicle_history (
@@ -224,7 +233,9 @@ CREATE TABLE parts_usage(
  
 CREATE TABLE payment_plans (
     plan_id SERIAL PRIMARY KEY,
-    plan_name VARCHAR(50)
+    plan_name VARCHAR(50) NOT NULL,
+    plan_duration INT NOT NULL,
+    plan_installments SMALLINT NOT NULL
 );
 
 CREATE TABLE invoices (
