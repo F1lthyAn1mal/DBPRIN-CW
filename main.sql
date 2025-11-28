@@ -259,7 +259,8 @@ CREATE TABLE payments (
     pay_amount DECIMAL(6,2) NOT NULL,
     pay_method VARCHAR(50) NOT NULL,
     pay_date DATE NOT NULL DEFAULT CURRENT_DATE,
-    pay_type pay_type_enum
+    pay_type pay_type_enum,
+    FOREIGN KEY (invoice_id) REFERENCES invoices(invoice_id)
 );
 
 CREATE TABLE feedback (
@@ -267,12 +268,14 @@ CREATE TABLE feedback (
     appt_id INT NOT NULL,
     rating INT CHECK (rating BETWEEN 1 and 5)
     description TEXT,
-    feedback_date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP CHECK (feedback_date >= CURRENT_TIMESTAMP)
+    feedback_date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP CHECK (feedback_date >= CURRENT_TIMESTAMP),
+    FOREIGN KEY (appt_id) REFERENCES appointments(appt_id)
 );
 
 CREATE TABLE feedback_replies (
     reply_id SERIAL PRIMARY KEY,
     feedback_id INT NOT NULL,
     reply_text TEXT,
-    reply_date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP CHECK (reply_date >= CURRENT_TIMESTAMP)
+    reply_date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP CHECK (reply_date >= CURRENT_TIMESTAMP),
+    FOREIGN KEY (feedback_id) REFERENCES feedback(feedback_id)
 );
