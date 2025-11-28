@@ -60,7 +60,7 @@ CREATE TABLE branches (
     branch_email VARCHAR(150) NOT NULL UNIQUE CHECK (branch_email ~ '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$'),
     branch_addr1 VARCHAR(100) NOT NULL,
     bbranch_addr2 VARCHAR(100),
-    branchpostcode VARCHAR(7) NOT NULL,
+    branch_postcode VARCHAR(7) NOT NULL,
     branch_city VARCHAR(50) NOT NULL,
     workshop_size SMALLINT NOT NULL,
     FOREIGN KEY (manager_id) REFERENCES staff(staff_id)
