@@ -62,7 +62,8 @@ CREATE TABLE branches (
     bbranch_addr2 VARCHAR(100),
     branchpostcode VARCHAR(7) NOT NULL,
     branch_city VARCHAR(50) NOT NULL,
-    workshop_size SMALLINT NOT NULL 
+    workshop_size SMALLINT NOT NULL,
+    FOREIGN KEY (manager_id) REFERENCES staff(staff_id)
 );
 
 CREATE TABLE branch_staff (
