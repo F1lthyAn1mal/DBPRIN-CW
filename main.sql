@@ -76,8 +76,8 @@ CREATE TABLE branch_staff (
  Create Table branch_compliance(
     record_id  Serial Primary KEY,
     branch_id INT NOT NULL,
-    branch_inspection_date TIMESTAMP,
-    branch_inspection BOOL,
+    branch_inspection_date TIMESTAMP NOT NULL,
+    branch_inspection_passed BOOL NOT NULL,
     FOREIGN KEY(branch_id) REFERENCES branches(branch_id)
  );
 
