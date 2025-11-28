@@ -84,7 +84,7 @@ CREATE TABLE branch_staff (
 Create Table service_bays(
     bay_id SERIAL PRIMARY KEY,
     branch_id INT NOT NULL,
-    occupied BOOL,
+    occupied BOOL NOT NULL,
     FOREIGN KEY(branch_id) REFERENCES branches(branch_id)
 );
 
@@ -142,7 +142,7 @@ CREATE TABLE vehicle_mot (
     vehicle_id INT NOT NULL,
     mot_date DATE NOT NULL,
     mot_due_date DATE DEFAULT CURRENT_DATE + INVERVAL '1 Year',
-    passed BOOL,
+    passed BOOL NOT NULL,
     advisories TEXT,
     FOREIGN KEY (vehicle_id) REFERENCES vehicles(vehicle_id)
 );
@@ -152,7 +152,8 @@ CREATE TABLE vehicle_history (
     vehicle_id INT NOT NULL,
     last_service DATE,
     service_due DATE NOT NULL,
-    external_services TEXT
+    external_services TEXT,
+    FOREIGN KEY (vehicle_id) REFERENCES vehicles(vehicle_id)
 );
 
 CREATE TABLE appointments (
@@ -199,8 +200,8 @@ CREATE TABLE bay_allocation(
 
 CREATE TABLE service_assignments(
     service_asgn_id  SERIAL PRIMARY KEY,
-    allocation_id INTEGER NOT NULL,
-    service_id INTEGER NOT NULL,
+    allocation_id INT NOT NULL,
+    service_id INT NOT NULL,
     time_taken DECIMAL(3,1),
     FOREIGN KEY(service_id) REFERENCES service_type(service_id),
     FOREIGN KEY(allocation_id) REFERENCES bay_allocation(allocation_id)
@@ -210,18 +211,17 @@ CREATE TABLE service_assignments(
 CREATE TABLE staff_assignments (
     staff_id INT NOT NULL,
     service_asgnn_id INT NOT NULL,
-    bay_id INT NOT NULL,
+    bay_id INT NOT NULL,  -- NOT SURE WHY WE HAVE BAY ID HERE???
     FOREIGN KEY (staff_id) REFERENCES staff(staff_id),
     FOREIGN KEY (bay_id) REFERENCES service_bays(bay_id)
 );
 
 
 CREATE TABLE parts(
-    part_id Serial Primary Key,
-    part_name VARCHAR(50),
+    part_id SERIAL PRIMARY KEY,
+    part_name VARCHAR(50) NOT NULL,
     part_description VARCHAR(50),
-    part_price DECIMAL(7,2),
-
+    part_price DECIMAL(7,2) NOT NULL,
  );
 
 CREATE TABLE parts_usage(
@@ -266,7 +266,7 @@ CREATE TABLE payments (
 CREATE TABLE feedback (
     feedback_id SERIAL PRIMARY KEY,
     appt_id INT NOT NULL,
-    rating INT CHECK (rating BETWEEN 1 and 5)
+    rating INT NOT NULL CHECK (rating BETWEEN 1 and 5),
     description TEXT,
     feedback_date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP CHECK (feedback_date >= CURRENT_TIMESTAMP),
     FOREIGN KEY (appt_id) REFERENCES appointments(appt_id)
