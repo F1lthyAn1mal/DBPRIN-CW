@@ -156,10 +156,13 @@ CREATE TABLE vehicle_history (
     FOREIGN KEY (vehicle_id) REFERENCES vehicles(vehicle_id)
 );
 
+CREATE TYPE status_enum AS ENUM ('Not Started', 'In Progress', 'Completed', 'Missed', 'Rescheduled')
 CREATE TABLE appointments (
     appt_id SERIAL PRIMARY KEY,
     vehicle_id INT NOT NULL,
-    appt_date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP CHECK (appt_date >= CURRENT_TIMESTAMP),
+    appt_start TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP CHECK (appt_start >= CURRENT_TIMESTAMP),
+    appt_end TIMESTAMP CHECK (appt_end > appt_start),
+    status status_enum NOT NULL,
     FOREIGN KEY (vehicle_id) REFERENCES vehicles(vehicle_id)
 );
 
