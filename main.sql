@@ -215,9 +215,9 @@ CREATE TABLE service_assignments(
 
 CREATE TABLE staff_assignments (
     staff_id INT NOT NULL,
-    service_asgnn_id INT NOT NULL,
+    service_asgn_id INT NOT NULL,
     FOREIGN KEY (staff_id) REFERENCES staff(staff_id),
-    FOREIGN KEY (bay_id) REFERENCES service_bays(bay_id)
+    FOREIGN KEY (service_asgn_id) REFERENCES service_assignments(service_asgn_id)
 );
 
 
