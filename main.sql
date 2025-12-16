@@ -160,10 +160,12 @@ CREATE TYPE status_enum AS ENUM ('Not Started', 'In Progress', 'Completed', 'Mis
 CREATE TABLE appointments (
     appt_id SERIAL PRIMARY KEY,
     vehicle_id INT NOT NULL,
+    package_id INT NOT NULL
     appt_start TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP CHECK (appt_start >= CURRENT_TIMESTAMP),
     appt_end TIMESTAMP CHECK (appt_end > appt_start),
     status status_enum NOT NULL,
-    FOREIGN KEY (vehicle_id) REFERENCES vehicles(vehicle_id)
+    FOREIGN KEY (vehicle_id) REFERENCES vehicles(vehicle_id),
+    FOREIGN KEY (package_id) REFERENCES packages(package_id)
 );
 
 CREATE TABLE appt_history(
@@ -214,7 +216,6 @@ CREATE TABLE service_assignments(
 CREATE TABLE staff_assignments (
     staff_id INT NOT NULL,
     service_asgnn_id INT NOT NULL,
-    bay_id INT NOT NULL,  -- NOT SURE WHY WE HAVE BAY ID HERE???
     FOREIGN KEY (staff_id) REFERENCES staff(staff_id),
     FOREIGN KEY (bay_id) REFERENCES service_bays(bay_id)
 );
@@ -256,7 +257,7 @@ CREATE TABLE invoices (
     FOREIGN KEY (cust_id) REFERENCES customer(cust_id)
 );
 
-CREATE TYPE pay_type_enum AS ENUM ('In Full', 'Installment', )
+CREATE TYPE pay_type_enum AS ENUM ('In Full', 'Installment')
 CREATE TABLE payments (
     pay_id SERIAL PRIMARY KEY,
     invoice_id INT NOT NULL,
