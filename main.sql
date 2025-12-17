@@ -286,3 +286,103 @@ CREATE TABLE feedback_replies (
 );
 
 
+
+
+
+-- ------------------------------ FUNCIONS ---------------------------------
+
+
+
+-- Automatically create bay_compliance record when a new service_bays row is inserted
+CREATE OR REPLACE FUNCTION fn_service_bays_after_insert()
+RETURNS TRIGGER AS $$
+BEGIN
+    -- Insert a corresponding compliance row for the new bay
+    INSERT INTO bay_compliance (bay_id, bay_inspection_date, bay_inspection_passed)
+    VALUES (NEW.bay_id, CURRENT_TIMESTAMP, true);
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_service_bays_after_insert ON service_bays;
+CREATE TRIGGER 
+    trg_service_bays_after_insert AFTER 
+INSERT 
+    ON service_bays
+FOR EACH ROW
+EXECUTE
+    FUNCTION fn_service_bays_after_insert();
+
+
+
+-- Automatically create brance_compliance record when a new branch row is inserted
+CREATE OR REPLACE FUNCION fn_branch_after_insert()
+RETURNS TRIGGER AS $$
+BEGIN
+    -- Insert a corresponding compliance row for the new branch
+    INSERT INTO brance_compliance (branch_id, branch_inspection_date, branch_inspection_passed)
+    VALUES (NEW.branch_id, TIMESTAMP, true);
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql
+
+DROP TRIGGER IF EXISTS trg_branch_after_insert ON branches;
+CREATE TRIGGER
+    trg_branch_after_insert AFTER
+INSERT
+    ON branch
+FOR EACH ROW
+EXECUTE
+    FUNCION fn_branch_after_insert();
+
+
+
+-- Automatically calculate the package price when package mappings change
+CREATE OR REPLACE FUNCTION fn_calc_package_price()
+RETURNS TRIGGER AS $$
+DECLARE
+    target_package_ids INT[] := ARRAY[]::INT[];
+BEGIN
+    IF TG_OP = 'INSERT' THEN
+        target_package_ids := ARRAY[NEW.package_id];
+    ELSIF TG_OP = 'UPDATE' THEN
+        target_package_ids := ARRAY(
+            SELECT DISTINCT unnest(ARRAY[OLD.package_id, NEW.package_id])
+        );
+    ELSE
+        target_package_ids := ARRAY[OLD.package_id];
+    END IF;
+
+    UPDATE packages p
+    SET package_price = COALESCE((
+        SELECT SUM(st.service_price)
+        FROM service_packages sp
+        JOIN service_type st ON st.service_id = sp.service_id
+        WHERE sp.package_id = p.package_id
+    ), 0)
+    WHERE p.package_id = ANY(target_package_ids);
+
+    RETURN COALESCE(NEW, OLD);
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_calc_package_price ON service_packages;
+CREATE TRIGGER trg_calc_package_price
+AFTER INSERT OR UPDATE OR DELETE
+ON service_packages
+FOR EACH ROW
+EXECUTE FUNCTION fn_calc_package_price();
+
+
+-- When the appt_history table is updated, service_date and service_due are updated in vehicle_history using appt_end date. 
+-- Automatically update vehicle history whenever an insert is made into appt_history when the appt has been completed
+CREATE OR REPLACE FUNCTION fn_upt_vehicle_history()
+RETURNS TRIGGER AS $$
+BEGIN
+    appt_end = (SELECT appt_end FROM appointments WHERE appt_id = NEW.appt_id)
+
+    UPDATE vehicle_history
+    SET last_service = appt_end
+    WHERE 
