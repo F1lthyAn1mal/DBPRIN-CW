@@ -16,6 +16,7 @@ CREATE TABLE certifications (
     cert_name VARCHAR(100) NOT NULL,
     cert_date DATE NOT NULL DEFAULT CURRENT_DATE
 );
+
 CREATE TABLE staff_certifications (
     staff_id INT NOT NULL,
     cert_id INT NOT NULL,
@@ -48,7 +49,7 @@ CREATE TABLE staff_shifts (
     staff_id INT NOT NULL,
     shift_id INT NOT NULL,
     FOREIGN KEY (staff_id) REFERENCES staff(staff_id),
-    FOREIGN KEY (shift_id) REFERENCES shift(shift_id)
+    FOREIGN KEY (shift_id) REFERENCES shifts(shift_id)
 );
 
 
@@ -69,11 +70,11 @@ CREATE TABLE branches (
 CREATE TABLE branch_staff (
     branch_id INT NOT NULL,
     staff_id INT NOT NULL,
-    FOREIGN KEY (branch_id) REFERENCES branches(branch_id)
+    FOREIGN KEY (branch_id) REFERENCES branches(branch_id),
     FOREIGN KEY (staff_id) REFERENCES staff(staff_id)
 );
 
- Create Table branch_compliance(
+ CREATE TABLE branch_compliance(
     record_id  Serial Primary KEY,
     branch_id INT NOT NULL,
     branch_inspection_date TIMESTAMP NOT NULL,
@@ -81,14 +82,14 @@ CREATE TABLE branch_staff (
     FOREIGN KEY(branch_id) REFERENCES branches(branch_id)
  );
 
-Create Table service_bays(
+CREATE TABLE service_bays(
     bay_id SERIAL PRIMARY KEY,
     branch_id INT NOT NULL,
     occupied BOOL NOT NULL,
     FOREIGN KEY(branch_id) REFERENCES branches(branch_id)
 );
 
-Create Table bay_compliance(
+CREATE TABLE bay_compliance(
     bay_record_id SERIAL PRIMARY KEY,
     bay_id INT NOT NULL,
     bay_inspection_date TIMESTAMP,
@@ -141,7 +142,7 @@ CREATE TABLE vehicle_mot (
     mot_id SERIAL PRIMARY KEY,
     vehicle_id INT NOT NULL,
     mot_date DATE NOT NULL,
-    mot_due_date DATE DEFAULT CURRENT_DATE + INVERVAL '1 Year',
+    mot_due_date DATE DEFAULT CURRENT_DATE + INTERVAL '1 Year',
     passed BOOL NOT NULL,
     advisories TEXT,
     FOREIGN KEY (vehicle_id) REFERENCES vehicles(vehicle_id)
@@ -156,11 +157,31 @@ CREATE TABLE vehicle_history (
     FOREIGN KEY (vehicle_id) REFERENCES vehicles(vehicle_id)
 );
 
-CREATE TYPE status_enum AS ENUM ('Not Started', 'In Progress', 'Completed', 'Missed', 'Rescheduled')
+CREATE TABLE packages(
+    package_id SERIAL PRIMARY KEY,
+    package_price DECIMAL(10,2) NOT NULL CHECK (package_price >= 0),
+    package_desc TEXT
+);
+
+CREATE TABLE service_type(
+    service_id SERIAL PRIMARY KEY,
+    service_name VARCHAR(100) NOT NULL,
+    service_price DECIMAL(10,2) NOT NULL CHECK (service_price >= 0)
+);
+
+
+CREATE TABLE service_packages (
+    service_id INT NOT NULL,
+    package_id INT NOT NULL,
+    FOREIGN KEY (service_id) REFERENCES service_type(service_id),
+    FOREIGN KEY (package_id) REFERENCES packages(package_id)
+);
+
+CREATE TYPE status_enum AS ENUM ('Not Started', 'In Progress', 'Completed', 'Missed', 'Rescheduled');
 CREATE TABLE appointments (
     appt_id SERIAL PRIMARY KEY,
     vehicle_id INT NOT NULL,
-    package_id INT NOT NULL
+    package_id INT NOT NULL,
     appt_start TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP CHECK (appt_start >= CURRENT_TIMESTAMP),
     appt_end TIMESTAMP CHECK (appt_end > appt_start),
     status status_enum NOT NULL,
@@ -173,27 +194,6 @@ CREATE TABLE appt_history(
     history_id INT NOT NULL,
     FOREIGN KEY (appt_id) REFERENCES appointments(appt_id),
     FOREIGN KEY (history_id) REFERENCES vehicle_history(history_id)
-);
-
-CREATE TABLE service_type(
-    service_id SERIAL PRIMARY KEY,
-    service_name VARCHAR(20) NOT NULL,
-    service_price DECIMAL(10,2) NOT NULL CHECK (service_price >= 0)
-);
-
-
-CREATE TABLE packages(
-    package_id SERIAL PRIMARY KEY,
-    package_price DECIMAL(10,2) NOT NULL CHECK (package_price >= 0),
-    package_desc TEXT
-);
-
-
-CREATE TABLE service_packages (
-    service_id INT NOT NULL,
-    package_id INT NOT NULL,
-    FOREIGN KEY (service_id) REFERENCES service_type(service_id),
-    FOREIGN KEY (package_id) REFERENCES packages(package_id)
 );
 
 
@@ -225,7 +225,7 @@ CREATE TABLE parts(
     part_id SERIAL PRIMARY KEY,
     part_name VARCHAR(50) NOT NULL,
     part_description VARCHAR(50),
-    part_price DECIMAL(7,2) NOT NULL,
+    part_price DECIMAL(7,2) NOT NULL
  );
 
 CREATE TABLE parts_usage(
@@ -254,10 +254,10 @@ CREATE TABLE invoices (
     invoice_discount_total DECIMAL(7,2),
     FOREIGN KEY (appt_id) REFERENCES appointments(appt_id),
     FOREIGN KEY (plan_id) REFERENCES payment_plans(plan_id),
-    FOREIGN KEY (cust_id) REFERENCES customer(cust_id)
+    FOREIGN KEY (cust_id) REFERENCES customers(cust_id)
 );
 
-CREATE TYPE pay_type_enum AS ENUM ('In Full', 'Installment')
+CREATE TYPE pay_type_enum AS ENUM ('In Full', 'Installment');
 CREATE TABLE payments (
     pay_id SERIAL PRIMARY KEY,
     invoice_id INT NOT NULL,
@@ -286,93 +286,3 @@ CREATE TABLE feedback_replies (
 );
 
 
-
-
--- ------------------------------ FUNCIONS ---------------------------------
-
-
-
--- Automatically create bay_compliance record when a new service_bays row is inserted
-CREATE OR REPLACE FUNCTION fn_service_bays_after_insert()
-RETURNS TRIGGER AS $$
-BEGIN
-    -- Insert a corresponding compliance row for the new bay
-    INSERT INTO bay_compliance (bay_id, bay_inspection_date, bay_inspection_passed)
-    VALUES (NEW.bay_id, CURRENT_TIMESTAMP, true);
-
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-DROP TRIGGER IF EXISTS trg_service_bays_after_insert ON service_bays;
-CREATE TRIGGER 
-    trg_service_bays_after_insert AFTER 
-INSERT 
-    ON service_bays
-FOR EACH ROW
-EXECUTE
-    FUNCTION fn_service_bays_after_insert();
-
-
-
--- Automatically create brance_compliance record when a new branch row is inserted
-CREATE OR REPLACE FUNCION fn_branch_after_insert()
-RETURNS TRIGGER AS $$
-BEGIN
-    -- Insert a corresponding compliance row for the new branch
-    INSERT INTO brance_compliance (branch_id, branch_inspection_date, branch_inspection_passed)
-    VALUES (NEW.branch_id, TIMESTAMP, true);
-
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql
-
-DROP TRIGGER IF EXISTS trg_branch_after_insert ON branches;
-CREATE TRIGGER
-    trg_branch_after_insert AFTER
-INSERT
-    ON branch
-FOR EACH ROW
-EXECUTE
-    FUNCION fn_branch_after_insert();
-
-
-
--- Automatically generate an invoice when an appointment has been completed
--- TODO: Implement fn_invoice_after_completion once appointment completion workflow is defined.
-
--- Automatically calculate the package price when package mappings change
-CREATE OR REPLACE FUNCTION fn_calc_package_price()
-RETURNS TRIGGER AS $$
-DECLARE
-    target_package_ids INT[] := ARRAY[]::INT[];
-BEGIN
-    IF TG_OP = 'INSERT' THEN
-        target_package_ids := ARRAY[NEW.package_id];
-    ELSIF TG_OP = 'UPDATE' THEN
-        target_package_ids := ARRAY(
-            SELECT DISTINCT unnest(ARRAY[OLD.package_id, NEW.package_id])
-        );
-    ELSE
-        target_package_ids := ARRAY[OLD.package_id];
-    END IF;
-
-    UPDATE packages p
-    SET package_price = COALESCE((
-        SELECT SUM(st.service_price)
-        FROM service_packages sp
-        JOIN service_type st ON st.service_id = sp.service_id
-        WHERE sp.package_id = p.package_id
-    ), 0)
-    WHERE p.package_id = ANY(target_package_ids);
-
-    RETURN COALESCE(NEW, OLD);
-END;
-$$ LANGUAGE plpgsql;
-
-DROP TRIGGER IF EXISTS trg_calc_package_price ON service_packages;
-CREATE TRIGGER trg_calc_package_price
-AFTER INSERT OR UPDATE OR DELETE
-ON service_packages
-FOR EACH ROW
-EXECUTE FUNCTION fn_calc_package_price();
