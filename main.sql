@@ -339,50 +339,79 @@ EXECUTE
 
 
 
--- Automatically calculate the package price when package mappings change
-CREATE OR REPLACE FUNCTION fn_calc_package_price()
-RETURNS TRIGGER AS $$
-DECLARE
-    target_package_ids INT[] := ARRAY[]::INT[];
-BEGIN
-    IF TG_OP = 'INSERT' THEN
-        target_package_ids := ARRAY[NEW.package_id];
-    ELSIF TG_OP = 'UPDATE' THEN
-        target_package_ids := ARRAY(
-            SELECT DISTINCT unnest(ARRAY[OLD.package_id, NEW.package_id])
-        );
-    ELSE
-        target_package_ids := ARRAY[OLD.package_id];
-    END IF;
-
-    UPDATE packages p
-    SET package_price = COALESCE((
-        SELECT SUM(st.service_price)
-        FROM service_packages sp
-        JOIN service_type st ON st.service_id = sp.service_id
-        WHERE sp.package_id = p.package_id
-    ), 0)
-    WHERE p.package_id = ANY(target_package_ids);
-
-    RETURN COALESCE(NEW, OLD);
-END;
-$$ LANGUAGE plpgsql;
-
-DROP TRIGGER IF EXISTS trg_calc_package_price ON service_packages;
-CREATE TRIGGER trg_calc_package_price
-AFTER INSERT OR UPDATE OR DELETE
-ON service_packages
-FOR EACH ROW
-EXECUTE FUNCTION fn_calc_package_price();
-
-
--- When the appt_history table is updated, service_date and service_due are updated in vehicle_history using appt_end date. 
 -- Automatically update vehicle history whenever an insert is made into appt_history when the appt has been completed
 CREATE OR REPLACE FUNCTION fn_upt_vehicle_history()
 RETURNS TRIGGER AS $$
+DECLARE
+    v_appt_end TIMESTAMP;
+    v_appt_status status_enum;
 BEGIN
-    appt_end = (SELECT appt_end FROM appointments WHERE appt_id = NEW.appt_id)
+    -- Get the appointment end date and status
+    SELECT appt_end, status 
+    INTO v_appt_end, v_appt_status
+    FROM appointments 
+    WHERE appt_id = NEW.appt_id;
+    
+    -- Only update if appointment is completed
+    IF v_appt_status = 'Completed' AND v_appt_end IS NOT NULL THEN
+        UPDATE vehicle_history
+        SET last_service = v_appt_end::DATE,
+            service_due = (v_appt_end + INTERVAL '6 months')::DATE
+        WHERE history_id = NEW.history_id;
+    END IF;
+    
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
 
-    UPDATE vehicle_history
-    SET last_service = appt_end
-    WHERE 
+DROP TRIGGER IF EXISTS trg_upt_vehicle_history ON appt_history;
+CREATE TRIGGER trg_upt_vehicle_history
+AFTER INSERT OR UPDATE
+ON appt_history
+FOR EACH ROW
+EXECUTE FUNCTION fn_upt_vehicle_history(); 
+
+
+
+-- If an appointment has an MOT service in it, create new insert for  vehicle_mot table. mot_due_date created based on mot_date
+CREATE OR REPLACE FUNCTION fn_create_mot_record()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_has_mot BOOLEAN;
+    v_mot_date DATE;
+BEGIN
+    -- Check if the appointment's package contains an MOT service
+    SELECT EXISTS(
+        SELECT 1
+        FROM service_packages sp
+        JOIN service_type st ON sp.service_id = st.service_id
+        WHERE sp.package_id = NEW.package_id
+        AND LOWER(st.service_name) LIKE '%mot%'
+    ) INTO v_has_mot;
+    
+    -- If MOT service found and appointment is completed, create MOT record
+    IF v_has_mot AND NEW.status = 'Completed' AND NEW.appt_end IS NOT NULL THEN
+        v_mot_date := NEW.appt_end::DATE;
+        
+        INSERT INTO vehicle_mot (vehicle_id, mot_date, mot_due_date, passed, advisories)
+        VALUES (
+            NEW.vehicle_id,
+            v_mot_date,
+            v_mot_date + INTERVAL '1 year',
+            true,
+            NULL
+        );
+    END IF;
+    
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_create_mot_record ON appointments;
+CREATE TRIGGER trg_create_mot_record
+AFTER INSERT OR UPDATE
+ON appointments
+FOR EACH ROW
+EXECUTE FUNCTION fn_create_mot_record();
+
+
