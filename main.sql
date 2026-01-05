@@ -1,3 +1,4 @@
+-- ======================================= CREATE TABLE STATEMENTS =======================================
 CREATE TABLE staff (
     staff_id SERIAL PRIMARY KEY,
     staff_fname VARCHAR(50) NOT NULL,
@@ -150,7 +151,7 @@ CREATE TABLE vehicle_mot (
 
 CREATE TABLE vehicle_history (
     history_id SERIAL PRIMARY KEY,
-    vehicle_id INT NOT NULL,
+    vehicle_id INT UNIQUE NOT NULL,
     last_service DATE,
     service_due DATE NOT NULL,
     external_services TEXT,
@@ -190,7 +191,7 @@ CREATE TABLE appointments (
 );
 
 CREATE TABLE appt_history(
-    appt_id INT NOT NULL,
+    appt_id INT UNIQUE NOT NULL,
     history_id INT NOT NULL,
     FOREIGN KEY (appt_id) REFERENCES appointments(appt_id),
     FOREIGN KEY (history_id) REFERENCES vehicle_history(history_id)
@@ -249,7 +250,7 @@ CREATE TABLE invoices (
     cust_id INT NOT NULL,
     invoice_total DECIMAL(7,2),
     invoice_created DATE NOT NULL DEFAULT CURRENT_DATE,
-    invouce_due_date DATE NOT NULL,
+    invoice_due_date DATE NOT NULL,
     invoice_amount_due DECIMAL(7,2),
     invoice_discount_total DECIMAL(7,2),
     FOREIGN KEY (appt_id) REFERENCES appointments(appt_id),
@@ -289,7 +290,7 @@ CREATE TABLE feedback_replies (
 
 
 
--- ------------------------------ FUNCIONS ---------------------------------
+-- ======================================= FUNCIONS =======================================
 
 
 
@@ -415,3 +416,50 @@ FOR EACH ROW
 EXECUTE FUNCTION fn_create_mot_record();
 
 
+-- Automatically calculate the package price when package mappings change
+CREATE OR REPLACE FUNCTION fn_calc_package_price()
+RETURNS TRIGGER AS $$
+DECLARE
+    target_package_ids INT[] := ARRAY[]::INT[];
+BEGIN
+    IF TG_OP = 'INSERT' THEN
+        target_package_ids := ARRAY[NEW.package_id];
+    ELSIF TG_OP = 'UPDATE' THEN
+        target_package_ids := ARRAY(
+            SELECT DISTINCT unnest(ARRAY[OLD.package_id, NEW.package_id])
+        );
+    ELSE
+        target_package_ids := ARRAY[OLD.package_id];
+    END IF;
+
+    UPDATE packages p
+    SET package_price = COALESCE((
+        SELECT SUM(st.service_price)
+        FROM service_packages sp
+        JOIN service_type st ON st.service_id = sp.service_id
+        WHERE sp.package_id = p.package_id
+    ), 0)
+    WHERE p.package_id = ANY(target_package_ids);
+
+    RETURN COALESCE(NEW, OLD);
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_calc_package_price ON service_packages;
+CREATE TRIGGER trg_calc_package_price
+AFTER INSERT OR UPDATE OR DELETE
+ON service_packages
+FOR EACH ROW
+EXECUTE FUNCTION fn_calc_package_price();
+
+
+-- ======================================= INDEXES =======================================
+
+
+
+
+
+-- ======================================= VIEWS =======================================
+
+
+-- ======================================= QUERIES =======================================
