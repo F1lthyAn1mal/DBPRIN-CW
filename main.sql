@@ -76,7 +76,7 @@ CREATE TABLE branch_staff (
 );
 
  CREATE TABLE branch_compliance(
-    record_id  Serial Primary KEY,
+    record_id  SERIAL PRIMARY KEY,
     branch_id INT NOT NULL,
     branch_inspection_date TIMESTAMP NOT NULL,
     branch_inspection_passed BOOL NOT NULL,
@@ -93,8 +93,8 @@ CREATE TABLE service_bays(
 CREATE TABLE bay_compliance(
     bay_record_id SERIAL PRIMARY KEY,
     bay_id INT NOT NULL,
-    bay_inspection_date TIMESTAMP,
-    bay_inspection_passed BOOL,
+    bay_inspection_date TIMESTAMP NOT NULL,
+    bay_inspection_passed BOOL NOT NULL,
     FOREIGN KEY(bay_id) REFERENCES service_bays(bay_id)
 );
 
@@ -453,13 +453,279 @@ FOR EACH ROW
 EXECUTE FUNCTION fn_calc_package_price();
 
 
+-- ======================================= TEST DATA =======================================
+
+-- Membership tiers
+INSERT INTO memberships (member_tier, member_price, member_discount) VALUES
+    ('None',   0.00, 0.00),
+    ('Bronze', 50.00, 0.05),
+    ('Silver', 100.00, 0.10),
+    ('Gold',   150.00, 0.15);
+
+-- Core staff
+INSERT INTO staff (staff_fname, staff_lname, staff_phone, staff_email, staff_addr1, staff_addr2, staff_postcode, staff_city) VALUES
+    ('John',   'Turner', '07123456780', 'john.turner@example.com',   '12 Oak Street',      NULL,          'AB12CD', 'Bristol'),
+    ('Priya',  'Nair',   '07123456781', 'priya.nair@example.com',    '9 Willow Close',     'Flat 2',       'BC23DE', 'Bristol'),
+    ('Elena',  'Morales','07123456782', 'elena.morales@example.com', '45 Park Lane',       NULL,          'CD34EF', 'Bath'),
+    ('Sam',    'Nguyen', '07123456783', 'sam.nguyen@example.com',    '3 Station Road',     'Suite 5',     'DE45FG', 'Cardiff'),
+    ('Luke',   'Hughes', '07123456784', 'luke.hughes@example.com',   '77 River View',      NULL,          'EF56GH', 'Newport');
+
+-- Roles and role assignments
+INSERT INTO roles (role_name) VALUES
+    ('Manager'),
+    ('Technician'),
+    ('Service Advisor');
+
+INSERT INTO staff_roles (role_id, staff_id) VALUES
+    (1, 1),  -- John is Manager
+    (2, 2),  -- Priya is Technician
+    (2, 3),  -- Elena is Technician
+    (3, 4),  -- Sam is Service Advisor
+    (2, 5);  -- Luke is Technician
+
+-- Certifications and staff mappings
+INSERT INTO certifications (cert_name, cert_date) VALUES
+    ('MOT Tester',        CURRENT_DATE - INTERVAL '2 years'),
+    ('EV Level 2',        CURRENT_DATE - INTERVAL '1 year'),
+    ('Hybrid Systems',    CURRENT_DATE - INTERVAL '6 months');
+
+INSERT INTO staff_certifications (staff_id, cert_id) VALUES
+    (2, 1),
+    (3, 2),
+    (5, 3),
+    (5, 2);
+
+-- Shifts and staff assignment to shifts
+INSERT INTO shifts (shift_start, shift_end) VALUES
+    ('2026-01-06 08:00:00', '2026-01-06 16:00:00'),
+    ('2026-01-07 08:00:00', '2026-01-07 16:00:00'),
+    ('2026-01-08 10:00:00', '2026-01-08 18:00:00');
+
+INSERT INTO staff_shifts (staff_id, shift_id) VALUES
+    (2, 1),
+    (3, 1),
+    (4, 2),
+    (5, 3);
+
+-- Branch and staffing
+INSERT INTO branches (manager_id, branch_phone, branch_email, branch_addr1, bbranch_addr2, branch_postcode, branch_city, workshop_size) VALUES
+    (1, '02070000001', 'bristol@garage.example.com', '100 Harbour Road', NULL, 'BS14AB', 'Bristol', 6);
+
+INSERT INTO branch_staff (branch_id, staff_id) VALUES
+    (1, 1), (1, 2), (1, 3), (1, 4), (1, 5);
+
+INSERT INTO branch_compliance (branch_id, branch_inspection_date, branch_inspection_passed) VALUES
+    (1, CURRENT_TIMESTAMP - INTERVAL '30 days', true);
+
+-- Bays (bay_compliance rows created by trigger)
+INSERT INTO service_bays (branch_id, occupied) VALUES
+    (1, false),
+    (1, false),
+    (1, true);
+
+-- Customers and memberships
+INSERT INTO customers (member_id, member_join_date, cust_fname, cust_lname, cust_phone, cust_email, cust_addr1, cust_addr2, cust_postcode, cust_city) VALUES
+    (2, CURRENT_DATE - INTERVAL '200 days', 'Alice', 'Wong',   '07110000001', 'alice.wong@example.com',   '4 Maple Grove', NULL,      'BS15CD', 'Bristol'),
+    (1, CURRENT_DATE - INTERVAL '50 days',  'Brian', 'Carter', '07110000002', 'brian.carter@example.com', '22 Hill View',  'Apt 3',   'BS26DE', 'Bath'),
+    (4, CURRENT_DATE - INTERVAL '400 days', 'Chloe', 'Smith',  '07110000003', 'chloe.smith@example.com',  '19 River Way',  NULL,      'CF37EF', 'Cardiff');
+
+-- Vehicles
+INSERT INTO vehicles (cust_id, vehicle_registration, vehicle_vin, vehicle_make, vehicle_model, vehicle_year, vehicle_colour, vehicle_fuel_type, vehicle_transmission, vehicle_mileage) VALUES
+    (1, 'AB12CDE', '1HGCM82633A004352', 'Toyota',  'Corolla', 2018, 'Blue',  'Hybrid',    'Automatic', 52000),
+    (2, 'CD34EFG', '1HGCM82633A004353', 'Ford',    'Focus',   2016, 'Red',   'Petrol',    'Manual',    68000),
+    (3, 'EF56GHI', '1HGCM82633A004354', 'Nissan',  'Leaf',    2020, 'White', 'Electric', 'Automatic', 24000);
+
+-- Vehicle history
+INSERT INTO vehicle_history (vehicle_id, last_service, service_due, external_services) VALUES
+    (1, CURRENT_DATE - INTERVAL '7 months', CURRENT_DATE + INTERVAL '5 months', 'Previous oil change at 45k'),
+    (2, CURRENT_DATE - INTERVAL '4 months', CURRENT_DATE + INTERVAL '8 months', 'Brake pads changed at 60k'),
+    (3, CURRENT_DATE - INTERVAL '9 months', CURRENT_DATE + INTERVAL '3 months', 'Battery health check at dealer');
+
+-- Services and packages
+INSERT INTO service_type (service_name, service_price) VALUES
+    ('MOT',             54.99),
+    ('Oil Change',      79.99),
+    ('Brake Inspection',59.99),
+    ('Tyre Rotation',   29.99),
+    ('Battery Check',   39.99);
+
+INSERT INTO packages (package_price, package_desc) VALUES
+    (0.00, 'Basic Service'),
+    (0.00, 'MOT Package'),
+    (0.00, 'EV Care');
+
+INSERT INTO service_packages (service_id, package_id) VALUES
+    (2, 1), -- Oil Change in Basic Service
+    (3, 1), -- Brake Inspection in Basic Service
+    (1, 2), -- MOT in MOT Package
+    (5, 3), -- Battery Check in EV Care
+    (4, 3); -- Tyre Rotation in EV Care
+
+-- Appointments (start dates kept >= now by construction)
+INSERT INTO appointments (vehicle_id, package_id, appt_start, appt_end, status) VALUES
+    (1, 1, CURRENT_TIMESTAMP + INTERVAL '1 day', CURRENT_TIMESTAMP + INTERVAL '1 day 2 hours', 'Not Started'),
+    (2, 2, CURRENT_TIMESTAMP + INTERVAL '2 hours', CURRENT_TIMESTAMP + INTERVAL '3 hours', 'Completed'),
+    (3, 3, CURRENT_TIMESTAMP + INTERVAL '3 days', CURRENT_TIMESTAMP + INTERVAL '3 days 2 hours', 'In Progress');
+
+-- Appointment to history mapping
+INSERT INTO appt_history (appt_id, history_id) VALUES
+    (1, 1),
+    (2, 2),
+    (3, 3);
+
+-- Bay allocations
+INSERT INTO bay_allocation (appt_id) VALUES
+    (1),
+    (2),
+    (3);
+
+-- Service assignments per appointment
+INSERT INTO service_assignments (allocation_id, service_id, time_taken) VALUES
+    (1, 2, 1.5),  -- Oil Change for appt 1
+    (1, 3, 1.0),  -- Brake Inspection for appt 1
+    (2, 1, 1.0),  -- MOT for appt 2
+    (3, 5, 0.7),  -- Battery Check for appt 3
+    (3, 4, 0.8);  -- Tyre Rotation for appt 3
+
+-- Staff assigned to services
+INSERT INTO staff_assignments (staff_id, service_asgn_id) VALUES
+    (2, 1),
+    (3, 2),
+    (5, 3),
+    (2, 4),
+    (5, 5);
+
+-- Parts and usage
+INSERT INTO parts (part_name, part_description, part_price) VALUES
+    ('Oil Filter',    'Standard oil filter', 12.50),
+    ('Brake Pads',    'Front axle pads',     74.00),
+    ('Wiper Blades',  '22 inch pair',        18.00);
+
+INSERT INTO parts_usage (part_id, allocation_id) VALUES
+    (1, 1),
+    (2, 1),
+    (3, 3);
+
+-- Payment plans
+INSERT INTO payment_plans (plan_name, plan_duration, plan_installments) VALUES
+    ('Single Payment', 1, 1),
+    ('3-Month Plan',   3, 3),
+    ('6-Month Plan',   6, 6);
+
+-- Invoices
+INSERT INTO invoices (appt_id, plan_id, cust_id, invoice_total, invoice_created, invoice_due_date, invoice_amount_due, invoice_discount_total) VALUES
+    (1, 2, 1, 139.98, CURRENT_DATE, CURRENT_DATE + INTERVAL '30 days', 132.98, 6.99),
+    (2, 1, 2, 54.99,  CURRENT_DATE, CURRENT_DATE + INTERVAL '14 days', 54.99, 0.00),
+    (3, 3, 3, 69.98,  CURRENT_DATE, CURRENT_DATE + INTERVAL '30 days', 59.48, 10.50);
+
+-- Payments
+INSERT INTO payments (invoice_id, pay_amount, pay_method, pay_date, pay_type) VALUES
+    (1, 44.33, 'Card', CURRENT_DATE, 'Installment'),
+    (1, 44.33, 'Card', CURRENT_DATE + INTERVAL '30 days', 'Installment'),
+    (2, 54.99, 'Card', CURRENT_DATE, 'In Full'),
+    (3, 29.74, 'Bank Transfer', CURRENT_DATE, 'Installment');
+
+-- Feedback and replies
+INSERT INTO feedback (appt_id, rating, description) VALUES
+    (2, 5, 'Quick MOT and friendly team'),
+    (1, 4, 'Service was thorough, small wait time');
+
+INSERT INTO feedback_replies (feedback_id, reply_text) VALUES
+    (1, 'Thanks for visiting, Brian!'),
+    (2, 'Appreciate the feedback, Alice.');
+
+
 -- ======================================= INDEXES =======================================
 
 
 
 
 
--- ======================================= VIEWS =======================================
-
-
 -- ======================================= QUERIES =======================================
+
+-- Upcoming appointments in the next 7 days with customer, vehicle, and package details
+SELECT
+    a.appt_id,
+    a.appt_start,
+    a.status,
+    c.cust_fname || ' ' || c.cust_lname AS customer_name,
+    v.vehicle_registration,
+    p.package_desc
+FROM appointments a
+JOIN vehicles v ON a.vehicle_id = v.vehicle_id
+JOIN customers c ON v.cust_id = c.cust_id
+JOIN packages p ON a.package_id = p.package_id
+WHERE a.appt_start < CURRENT_TIMESTAMP + INTERVAL '7 days'
+ORDER BY a.appt_start;
+
+-- Invoice balances with paid amount and overdue flag
+SELECT
+    i.invoice_id,
+    c.cust_fname || ' ' || c.cust_lname AS customer_name,
+    i.invoice_total,
+    COALESCE(SUM(pay.pay_amount), 0) AS total_paid,
+    i.invoice_total - COALESCE(SUM(pay.pay_amount), 0) AS balance_due,
+    (CURRENT_DATE > i.invoice_due_date) AS is_overdue
+FROM invoices i
+JOIN customers c ON i.cust_id = c.cust_id
+LEFT JOIN payments pay ON pay.invoice_id = i.invoice_id
+GROUP BY i.invoice_id, c.cust_fname, c.cust_lname, i.invoice_total, i.invoice_due_date
+ORDER BY i.invoice_due_date;
+
+-- Staff workload for the next 7 days (count of service tasks and scheduled hours)
+SELECT
+    s.staff_id,
+    s.staff_fname || ' ' || s.staff_lname AS staff_name,
+    COUNT(sa.service_asgn_id) AS assigned_tasks,
+    SUM(sa.time_taken) AS scheduled_hours
+FROM staff s
+JOIN staff_assignments ss ON s.staff_id = ss.staff_id
+JOIN service_assignments sa ON ss.service_asgn_id = sa.service_asgn_id
+JOIN bay_allocation ba ON sa.allocation_id = ba.allocation_id
+JOIN appointments a ON ba.appt_id = a.appt_id
+WHERE a.appt_start BETWEEN CURRENT_TIMESTAMP AND CURRENT_TIMESTAMP + INTERVAL '7 days'
+GROUP BY s.staff_id, s.staff_fname, s.staff_lname
+ORDER BY assigned_tasks DESC, scheduled_hours DESC;
+
+-- Vehicles overdue for service
+SELECT
+    v.vehicle_registration,
+    v.vehicle_make,
+    v.vehicle_model,
+    vh.service_due,
+    c.cust_fname || ' ' || c.cust_lname AS owner_name
+FROM vehicle_history vh
+JOIN vehicles v ON vh.vehicle_id = v.vehicle_id
+JOIN customers c ON v.cust_id = c.cust_id
+WHERE vh.service_due < CURRENT_DATE
+ORDER BY vh.service_due;
+
+-- Latest compliance snapshot per branch with failing bay count
+WITH latest_branch AS (
+    SELECT
+        bc.branch_id,
+        bc.branch_inspection_date,
+        bc.branch_inspection_passed,
+        ROW_NUMBER() OVER (PARTITION BY bc.branch_id ORDER BY bc.branch_inspection_date DESC) AS rn
+    FROM branch_compliance bc
+), latest_bay AS (
+    SELECT
+        sb.branch_id,
+        sb.bay_id,
+        bc.bay_inspection_date,
+        bc.bay_inspection_passed,
+        ROW_NUMBER() OVER (PARTITION BY bc.bay_id ORDER BY bc.bay_inspection_date DESC) AS rn
+    FROM service_bays sb
+    JOIN bay_compliance bc ON bc.bay_id = sb.bay_id
+)
+SELECT
+    b.branch_id,
+    lb.branch_inspection_date AS last_branch_inspection,
+    lb.branch_inspection_passed,
+    COUNT(lbay.bay_id) AS total_bays,
+    SUM(CASE WHEN lbay.bay_inspection_passed THEN 0 ELSE 1 END) AS failing_bays
+FROM branches b
+LEFT JOIN latest_branch lb ON lb.branch_id = b.branch_id AND lb.rn = 1
+LEFT JOIN latest_bay lbay ON lbay.branch_id = b.branch_id AND lbay.rn = 1
+GROUP BY b.branch_id, lb.branch_inspection_date, lb.branch_inspection_passed
+ORDER BY b.branch_id;
