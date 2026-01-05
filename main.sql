@@ -533,13 +533,15 @@ INSERT INTO customers (member_id, member_join_date, cust_fname, cust_lname, cust
 INSERT INTO vehicles (cust_id, vehicle_registration, vehicle_vin, vehicle_make, vehicle_model, vehicle_year, vehicle_colour, vehicle_fuel_type, vehicle_transmission, vehicle_mileage) VALUES
     (1, 'AB12CDE', '1HGCM82633A004352', 'Toyota',  'Corolla', 2018, 'Blue',  'Hybrid',    'Automatic', 52000),
     (2, 'CD34EFG', '1HGCM82633A004353', 'Ford',    'Focus',   2016, 'Red',   'Petrol',    'Manual',    68000),
-    (3, 'EF56GHI', '1HGCM82633A004354', 'Nissan',  'Leaf',    2020, 'White', 'Electric', 'Automatic', 24000);
+    (3, 'EF56GHI', '1HGCM82633A004354', 'Nissan',  'Leaf',    2020, 'White', 'Electric', 'Automatic', 24000),
+    (1, 'GH78IJK', '1HGCM82633A004355', 'Vauxhall','Astra',   2015, 'Black', 'Diesel',   'Manual',    95000);
 
 -- Vehicle history
 INSERT INTO vehicle_history (vehicle_id, last_service, service_due, external_services) VALUES
     (1, CURRENT_DATE - INTERVAL '7 months', CURRENT_DATE + INTERVAL '5 months', 'Previous oil change at 45k'),
     (2, CURRENT_DATE - INTERVAL '4 months', CURRENT_DATE + INTERVAL '8 months', 'Brake pads changed at 60k'),
-    (3, CURRENT_DATE - INTERVAL '9 months', CURRENT_DATE + INTERVAL '3 months', 'Battery health check at dealer');
+    (3, CURRENT_DATE - INTERVAL '9 months', CURRENT_DATE + INTERVAL '3 months', 'Battery health check at dealer'),
+    (4, CURRENT_DATE - INTERVAL '14 months', CURRENT_DATE - INTERVAL '8 months', 'Last serviced at 85k miles');
 
 -- Services and packages
 INSERT INTO service_type (service_name, service_price) VALUES
@@ -645,12 +647,12 @@ INSERT INTO feedback_replies (feedback_id, reply_text) VALUES
 
 -- Upcoming appointments in the next 7 days with customer, vehicle, and package details
 SELECT
-    a.appt_id,
-    a.appt_start,
-    a.status,
-    c.cust_fname || ' ' || c.cust_lname AS customer_name,
-    v.vehicle_registration,
-    p.package_desc
+    a.appt_id AS "Appointment ID",
+    a.appt_start AS "Appointment Start",
+    a.status AS "Appointment Status",
+    c.cust_fname || ' ' || c.cust_lname AS "Customer",
+    v.vehicle_registration AS "Vehicle Registration",
+    p.package_desc AS "Package Description"
 FROM appointments a
 JOIN vehicles v ON a.vehicle_id = v.vehicle_id
 JOIN customers c ON v.cust_id = c.cust_id
@@ -660,12 +662,12 @@ ORDER BY a.appt_start;
 
 -- Invoice balances with paid amount and overdue flag
 SELECT
-    i.invoice_id,
-    c.cust_fname || ' ' || c.cust_lname AS customer_name,
-    i.invoice_total,
-    COALESCE(SUM(pay.pay_amount), 0) AS total_paid,
-    i.invoice_total - COALESCE(SUM(pay.pay_amount), 0) AS balance_due,
-    (CURRENT_DATE > i.invoice_due_date) AS is_overdue
+    i.invoice_id AS "Invoice ID",
+    c.cust_fname || ' ' || c.cust_lname AS "Customer",
+    i.invoice_total  AS "Invoice Total",
+    COALESCE(SUM(pay.pay_amount), 0) AS "Total Paid",
+    i.invoice_total - COALESCE(SUM(pay.pay_amount), 0) AS "Balance Due",
+    (CURRENT_DATE > i.invoice_due_date) AS "Is Overdue"
 FROM invoices i
 JOIN customers c ON i.cust_id = c.cust_id
 LEFT JOIN payments pay ON pay.invoice_id = i.invoice_id
@@ -674,10 +676,10 @@ ORDER BY i.invoice_due_date;
 
 -- Staff workload for the next 7 days (count of service tasks and scheduled hours)
 SELECT
-    s.staff_id,
-    s.staff_fname || ' ' || s.staff_lname AS staff_name,
-    COUNT(sa.service_asgn_id) AS assigned_tasks,
-    SUM(sa.time_taken) AS scheduled_hours
+    s.staff_id AS "Staff ID",
+    s.staff_fname || ' ' || s.staff_lname AS "Staff",
+    COUNT(sa.service_asgn_id) AS "Assigned Tasks",
+    SUM(sa.time_taken) AS "Scheduled Hours"
 FROM staff s
 JOIN staff_assignments ss ON s.staff_id = ss.staff_id
 JOIN service_assignments sa ON ss.service_asgn_id = sa.service_asgn_id
@@ -685,15 +687,15 @@ JOIN bay_allocation ba ON sa.allocation_id = ba.allocation_id
 JOIN appointments a ON ba.appt_id = a.appt_id
 WHERE a.appt_start BETWEEN CURRENT_TIMESTAMP AND CURRENT_TIMESTAMP + INTERVAL '7 days'
 GROUP BY s.staff_id, s.staff_fname, s.staff_lname
-ORDER BY assigned_tasks DESC, scheduled_hours DESC;
+ORDER BY "Assigned Tasks" DESC, "Scheduled Hours" DESC;
 
 -- Vehicles overdue for service
 SELECT
-    v.vehicle_registration,
-    v.vehicle_make,
-    v.vehicle_model,
-    vh.service_due,
-    c.cust_fname || ' ' || c.cust_lname AS owner_name
+    v.vehicle_registration AS "Vehicle Registration",
+    v.vehicle_make AS "Vehicle Make",
+    v.vehicle_model AS "Vehicle Model",
+    vh.service_due AS "Service Due",
+    c.cust_fname || ' ' || c.cust_lname AS "Owner Name"
 FROM vehicle_history vh
 JOIN vehicles v ON vh.vehicle_id = v.vehicle_id
 JOIN customers c ON v.cust_id = c.cust_id
@@ -719,11 +721,11 @@ WITH latest_branch AS (
     JOIN bay_compliance bc ON bc.bay_id = sb.bay_id
 )
 SELECT
-    b.branch_id,
-    lb.branch_inspection_date AS last_branch_inspection,
-    lb.branch_inspection_passed,
-    COUNT(lbay.bay_id) AS total_bays,
-    SUM(CASE WHEN lbay.bay_inspection_passed THEN 0 ELSE 1 END) AS failing_bays
+    b.branch_id AS "Branch ID",
+    lb.branch_inspection_date AS "Last Branch Inspection",
+    lb.branch_inspection_passed AS "Inspection Passed",
+    COUNT(lbay.bay_id) AS "Total Bays",
+    SUM(CASE WHEN lbay.bay_inspection_passed THEN 0 ELSE 1 END) AS "Failing Bays"
 FROM branches b
 LEFT JOIN latest_branch lb ON lb.branch_id = b.branch_id AND lb.rn = 1
 LEFT JOIN latest_bay lbay ON lbay.branch_id = b.branch_id AND lbay.rn = 1
